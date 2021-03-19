@@ -12,59 +12,68 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.support.v4.app.ActivityCompat
-import android.support.v7.app.AppCompatActivity
 import android.widget.Toast
-import kotlinx.android.synthetic.main.activity_main.*
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.databinding.DataBindingUtil
+import com.androiddownloadmanager.databinding.ActivityMainBinding
 
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var viewDataBinding: ActivityMainBinding
     private var downloadManager: DownloadManager? = null
     private var downloadImageId: Long = -1
 
     private var onComplete: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            download.isEnabled = true
-            downloadCancel.isEnabled = false
-            Toast.makeText(context, "Download complete", Toast.LENGTH_LONG).show()
+            viewDataBinding.download.isEnabled = true
+            viewDataBinding.downloadCancel.isEnabled = false
+            Toast.makeText(context, R.string.toast_download_completed, Toast.LENGTH_LONG).show()
         }
     }
 
     private var onNotificationClick: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            Toast.makeText(context, "The download notification was clicked", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, R.string.toast_download_noti_clicked, Toast.LENGTH_LONG).show()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        viewDataBinding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
         requestStoragePermissionGranted()
 
         // Instances of download manager
         downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
-        val imageUri = Uri.parse("http://commonsware.com/misc/test.mp4")
+        val imageUri = Uri.parse("https://commonsware.com/misc/test.mp4")
 
-        download.setOnClickListener {
+        viewDataBinding.download.setOnClickListener {
             downloadImageId = startDownload(imageUri)
         }
 
-        downloadStatus.setOnClickListener {
+        viewDataBinding.downloadStatus.setOnClickListener {
             Toast.makeText(this, getStatusMessage(downloadImageId), Toast.LENGTH_SHORT).show()
         }
 
-        downloadCancel.setOnClickListener {
+        viewDataBinding.downloadCancel.setOnClickListener {
             downloadManager?.remove(downloadImageId)
         }
 
         registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
-        registerReceiver(onNotificationClick, IntentFilter(DownloadManager.ACTION_NOTIFICATION_CLICKED))
+        registerReceiver(
+            onNotificationClick,
+            IntentFilter(DownloadManager.ACTION_NOTIFICATION_CLICKED)
+        )
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
             finish()
@@ -80,7 +89,11 @@ class MainActivity : AppCompatActivity() {
     private fun requestStoragePermissionGranted() {
         if (Build.VERSION.SDK_INT >= 23) {
             if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                    1
+                )
             }
         }
     }
@@ -99,12 +112,16 @@ class MainActivity : AppCompatActivity() {
 
         // Set the local destination for the downloaded file to a path
         // within the application's external files directory
-        request.setDestinationInExternalFilesDir(this@MainActivity, Environment.DIRECTORY_DOWNLOADS, "test.mp4")
+        request.setDestinationInExternalFilesDir(
+            this@MainActivity,
+            Environment.DIRECTORY_DOWNLOADS,
+            "test.mp4"
+        )
         // Enqueue download and save into referenceId
         downloadReference = downloadManager?.enqueue(request) ?: -1
 
-        download.isEnabled = false
-        downloadCancel.isEnabled = true
+        viewDataBinding.download.isEnabled = false
+        viewDataBinding.downloadCancel.isEnabled = true
 
         return downloadReference
     }
@@ -138,25 +155,27 @@ class MainActivity : AppCompatActivity() {
         when (status) {
             DownloadManager.STATUS_FAILED -> {
                 statusText = "STATUS_FAILED"
-                when (reason) {
-                    DownloadManager.ERROR_CANNOT_RESUME -> reasonText = "ERROR_CANNOT_RESUME"
-                    DownloadManager.ERROR_DEVICE_NOT_FOUND -> reasonText = "ERROR_DEVICE_NOT_FOUND"
-                    DownloadManager.ERROR_FILE_ALREADY_EXISTS -> reasonText = "ERROR_FILE_ALREADY_EXISTS"
-                    DownloadManager.ERROR_FILE_ERROR -> reasonText = "ERROR_FILE_ERROR"
-                    DownloadManager.ERROR_HTTP_DATA_ERROR -> reasonText = "ERROR_HTTP_DATA_ERROR"
-                    DownloadManager.ERROR_INSUFFICIENT_SPACE -> reasonText = "ERROR_INSUFFICIENT_SPACE"
-                    DownloadManager.ERROR_TOO_MANY_REDIRECTS -> reasonText = "ERROR_TOO_MANY_REDIRECTS"
-                    DownloadManager.ERROR_UNHANDLED_HTTP_CODE -> reasonText = "ERROR_UNHANDLED_HTTP_CODE"
-                    DownloadManager.ERROR_UNKNOWN -> reasonText = "ERROR_UNKNOWN"
+                reasonText = when (reason) {
+                    DownloadManager.ERROR_CANNOT_RESUME -> "ERROR_CANNOT_RESUME"
+                    DownloadManager.ERROR_DEVICE_NOT_FOUND -> "ERROR_DEVICE_NOT_FOUND"
+                    DownloadManager.ERROR_FILE_ALREADY_EXISTS -> "ERROR_FILE_ALREADY_EXISTS"
+                    DownloadManager.ERROR_FILE_ERROR -> "ERROR_FILE_ERROR"
+                    DownloadManager.ERROR_HTTP_DATA_ERROR -> "ERROR_HTTP_DATA_ERROR"
+                    DownloadManager.ERROR_INSUFFICIENT_SPACE -> "ERROR_INSUFFICIENT_SPACE"
+                    DownloadManager.ERROR_TOO_MANY_REDIRECTS -> "ERROR_TOO_MANY_REDIRECTS"
+                    DownloadManager.ERROR_UNHANDLED_HTTP_CODE -> "ERROR_UNHANDLED_HTTP_CODE"
+                    DownloadManager.ERROR_UNKNOWN -> "ERROR_UNKNOWN"
+                    else -> ""
                 }
             }
             DownloadManager.STATUS_PAUSED -> {
                 statusText = "STATUS_PAUSED"
-                when (reason) {
-                    DownloadManager.PAUSED_QUEUED_FOR_WIFI -> reasonText = "PAUSED_QUEUED_FOR_WIFI"
-                    DownloadManager.PAUSED_UNKNOWN -> reasonText = "PAUSED_UNKNOWN"
-                    DownloadManager.PAUSED_WAITING_FOR_NETWORK -> reasonText = "PAUSED_WAITING_FOR_NETWORK"
-                    DownloadManager.PAUSED_WAITING_TO_RETRY -> reasonText = "PAUSED_WAITING_TO_RETRY"
+                reasonText = when (reason) {
+                    DownloadManager.PAUSED_QUEUED_FOR_WIFI -> "PAUSED_QUEUED_FOR_WIFI"
+                    DownloadManager.PAUSED_UNKNOWN -> "PAUSED_UNKNOWN"
+                    DownloadManager.PAUSED_WAITING_FOR_NETWORK -> "PAUSED_WAITING_FOR_NETWORK"
+                    DownloadManager.PAUSED_WAITING_TO_RETRY -> "PAUSED_WAITING_TO_RETRY"
+                    else -> ""
                 }
             }
             DownloadManager.STATUS_PENDING -> statusText = "STATUS_PENDING"

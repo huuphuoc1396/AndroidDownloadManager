@@ -3,4 +3,6 @@
     <string name="download">Download</string>
     <string name="status">Status</string>
     <string name="cancel">Cancel</string>
+    <string name="toast_download_completed">Download complete</string>
+    <string name="toast_download_noti_clicked">The download notification was clicked</string>
 </resources>
