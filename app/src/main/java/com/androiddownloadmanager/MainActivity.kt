@@ -9,9 +9,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Environment
+import android.os.*
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -24,16 +22,22 @@ class MainActivity : AppCompatActivity() {
     private lateinit var viewDataBinding: ActivityMainBinding
     private var downloadManager: DownloadManager? = null
     private var downloadImageId: Long = -1
+    private var trackingStatusThread: Thread? = null
 
-    private var onComplete: BroadcastReceiver = object : BroadcastReceiver() {
+    @Volatile
+    private var isDownloadCompleted = false
+
+    private var onCompleted: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            viewDataBinding.download.isEnabled = true
-            viewDataBinding.downloadCancel.isEnabled = false
+            isDownloadCompleted = true
+            viewDataBinding.startDownloadButton.isEnabled = true
+            viewDataBinding.cancelDownloadButton.isEnabled = false
+            viewDataBinding.downloadStatusText.text = getStatusMessage(downloadImageId)
             Toast.makeText(context, R.string.toast_download_completed, Toast.LENGTH_LONG).show()
         }
     }
 
-    private var onNotificationClick: BroadcastReceiver = object : BroadcastReceiver() {
+    private var onNotificationClicked: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             Toast.makeText(context, R.string.toast_download_noti_clicked, Toast.LENGTH_LONG).show()
         }
@@ -48,23 +52,17 @@ class MainActivity : AppCompatActivity() {
         // Instances of download manager
         downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
-        val imageUri = Uri.parse("https://commonsware.com/misc/test.mp4")
-
-        viewDataBinding.download.setOnClickListener {
-            downloadImageId = startDownload(imageUri)
+        viewDataBinding.startDownloadButton.setOnClickListener {
+            startDownload(Uri.parse("https://commonsware.com/misc/test.mp4"))
         }
 
-        viewDataBinding.downloadStatus.setOnClickListener {
-            Toast.makeText(this, getStatusMessage(downloadImageId), Toast.LENGTH_SHORT).show()
-        }
-
-        viewDataBinding.downloadCancel.setOnClickListener {
+        viewDataBinding.cancelDownloadButton.setOnClickListener {
             downloadManager?.remove(downloadImageId)
         }
 
-        registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+        registerReceiver(onCompleted, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
         registerReceiver(
-            onNotificationClick,
+            onNotificationClicked,
             IntentFilter(DownloadManager.ACTION_NOTIFICATION_CLICKED)
         )
     }
@@ -82,13 +80,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(onComplete)
-        unregisterReceiver(onNotificationClick)
+        unregisterReceiver(onCompleted)
+        unregisterReceiver(onNotificationClicked)
+        trackingStatusThread?.interrupt()
     }
 
     private fun requestStoragePermissionGranted() {
         if (Build.VERSION.SDK_INT >= 23) {
-            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(
                     this,
                     arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
@@ -98,17 +97,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startDownload(uri: Uri): Long {
-
-        val downloadReference: Long
+    private fun startDownload(uri: Uri) {
+        isDownloadCompleted = false
 
         val request = DownloadManager.Request(uri)
 
         // Setting title of request
-        request.setTitle("Data Download")
+        request.setTitle("Android Download Manager")
 
         // Setting description of request
-        request.setDescription("Android Data download using DownloadManager.")
+        request.setDescription("Android download using DownloadManager")
 
         // Set the local destination for the downloaded file to a path
         // within the application's external files directory
@@ -118,12 +116,23 @@ class MainActivity : AppCompatActivity() {
             "test.mp4"
         )
         // Enqueue download and save into referenceId
-        downloadReference = downloadManager?.enqueue(request) ?: -1
+        downloadImageId = downloadManager?.enqueue(request) ?: -1
+        startDownloadStatusTracking(downloadImageId)
 
-        viewDataBinding.download.isEnabled = false
-        viewDataBinding.downloadCancel.isEnabled = true
+        viewDataBinding.startDownloadButton.isEnabled = false
+        viewDataBinding.cancelDownloadButton.isEnabled = true
+    }
 
-        return downloadReference
+    private fun startDownloadStatusTracking(downloadImageId: Long) {
+        trackingStatusThread = Thread {
+            while (!isDownloadCompleted) {
+                runOnUiThread {
+                    viewDataBinding.downloadStatusText.text = getStatusMessage(downloadImageId)
+                }
+                Thread.sleep(TRACKING_STATUS_DELAY)
+            }
+        }
+        trackingStatusThread?.start()
     }
 
     private fun getStatusMessage(downloadId: Long): String {
@@ -183,6 +192,10 @@ class MainActivity : AppCompatActivity() {
             DownloadManager.STATUS_SUCCESSFUL -> statusText = "STATUS_SUCCESSFUL"
         }
 
-        return "Download Status: $statusText, $reasonText"
+        return "Status: $statusText, $reasonText"
+    }
+
+    companion object {
+        private const val TRACKING_STATUS_DELAY = 500L
     }
 }

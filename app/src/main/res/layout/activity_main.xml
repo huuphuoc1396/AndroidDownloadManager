@@ -5,37 +5,37 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:gravity="center"
         android:orientation="vertical"
-        tools:context=".MainActivity"
-        android:gravity="center">
+        tools:context=".MainActivity">
 
-        <Button
-            android:id="@+id/download"
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/downloadStatusText"
+            style="@style/TextAppearance.MaterialComponents.Subtitle1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/download"
-            android:textColor="@android:color/white"
-            android:background="@android:color/holo_blue_dark"
-            android:layout_margin="16dp" />
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="24dp"
+            tools:text="Status: STATUS_RUNNING," />
 
-
-        <Button
-            android:id="@+id/downloadStatus"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/startDownloadButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/status"
-            android:background="@android:color/holo_blue_dark"
-            android:textColor="@android:color/white"
-            android:layout_margin="16dp" />
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:text="@string/start_download"
+            android:textColor="@android:color/white" />
 
-        <Button
-            android:id="@+id/downloadCancel"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/cancelDownloadButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
             android:text="@string/cancel"
-            android:textColor="@android:color/white"
-            android:background="@android:color/holo_blue_dark"
-            android:layout_margin="16dp" />
+            android:textColor="@android:color/white" />
 
     </LinearLayout>
 </layout>
